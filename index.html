@@ -6,7 +6,188 @@
 <title>Calculadora CUP — Tasas El Toque</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; padding: 20px; }
+.container { max-width: 480px; margin: 0 auto; }
+.header { text-align: center; padding: 28px 0 20px; }
+.header h1 { font-size: 22px; font-weight: 600; }
+.header p { font-size: 13px; color: #94a3b8; margin-top: 5px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; background: #1e3a5f; color: #60a5fa; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; border: 1px solid #2563eb44; }
+.badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.card { background: #1e293b; border-radius: 16px; padding: 22px; margin-bottom: 14px; border: 1px solid #334155; }
+.card-title { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+.field input { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; font-size: 22px; font-weight: 700; color: #f1f5f9; outline: none; transition: border-color 0.2s; }
+.field input:focus { border-color: #3b82f6; }
+.field select { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; font-size: 15px; color: #f1f5f9; outline: none; cursor: pointer; appearance: none; }
+.result-box { background: #1e3a5f; border-radius: 14px; padding: 22px; margin-bottom: 14px; border: 1px solid #2563eb44; text-align: center; }
+.result-box .label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+.result-box .amount { font-size: 40px; font-weight: 700; color: #60a5fa; }
+.result-box .currency { font-size: 14px; color: #94a3b8; margin-top: 4px; }
+.result-box .rate-info { font-size: 12px; color: #93c5fd; margin-top: 8px; }
+.rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rate-item { background: #0f172a; border-radius: 10px; padding: 12px; border: 1px solid #334155; }
+.rate-item .flag { font-size: 18px; margin-bottom: 4px; }
+.rate-item .name { font-size: 11px; color: #64748b; }
+.rate-item .value { font-size: 15px; font-weight: 600; color: #f1f5f9; }
+.rate-item .sub { font-size: 10px; color: #475569; margin-top: 2px; }
+.loading { text-align: center; padding: 20px; color: #64748b; font-size: 13px; grid-column: 1/-1; }
+.error-msg { background: #1e1010; border: 1px solid #7f1d1d; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #fca5a5; margin-bottom: 14px; }
+.update-time { text-align: center; font-size: 11px; color: #475569; padding-bottom: 20px; }
+.swap-row { display: flex; justify-content: center; margin: -2px 0 8px; }
+.swap-btn { background: #1e3a5f; border: 1px solid #2563eb44; color: #60a5fa; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
-<body><h1>Calculadora</h1></body>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>💱 Calculadora de Cambio</h1>
+    <p>Tasas del mercado informal cubano</p>
+    <span class="badge"><span class="dot"></span><span id="badge-text">Cargando tasas...</span></span>
+  </div>
+
+  <div id="error-area"></div>
+
+  <div class="card">
+    <p class="card-title">Convertir</p>
+    <div class="field">
+      <label>Cantidad</label>
+      <input type="number" id="amount" value="1000" oninput="calculate()" />
+    </div>
+    <div class="field">
+      <label>De</label>
+      <select id="from-cur" onchange="calculate()"></select>
+    </div>
+    <div class="swap-row">
+      <button class="swap-btn" onclick="swapCurrencies()" title="Intercambiar">⇅</button>
+    </div>
+    <div class="field">
+      <label>A</label>
+      <select id="to-cur" onchange="calculate()"></select>
+    </div>
+  </div>
+
+  <div class="result-box">
+    <div class="label">Resultado</div>
+    <div class="amount" id="result">—</div>
+    <div class="currency" id="result-cur">—</div>
+    <div class="rate-info" id="rate-info">Cargando...</div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">📊 Tasas actuales — El Toque</p>
+    <div class="rates-grid" id="rates-grid">
+      <div class="loading">Obteniendo tasas en tiempo real...</div>
+    </div>
+  </div>
+
+  <div class="update-time" id="update-time">Fuente: elToque.com · Mercado informal</div>
+</div>
+
+<script>
+const FLAGS = { USD:'🇺🇸', EUR:'🇪🇺', MLC:'💳', CAD:'🇨🇦', MXN:'🇲🇽', BRL:'🇧🇷', CLA:'⚡', CUP:'🇨🇺' };
+const NAMES = { USD:'Dólar USD', EUR:'Euro EUR', MLC:'MLC', CAD:'Dólar CAD', MXN:'Peso MXN', BRL:'Real BRL', CLA:'CLA / Zelle', CUP:'Peso CUP' };
+let rates = {};
+
+async function fetchRates() {
+  try {
+    const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://eltoque.com/tasas-de-cambio-de-moneda-en-cuba-hoy');
+    const res = await fetch(url, { signal: AbortSignal.timeout(9000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return parseRates(data.contents || '');
+  } catch(e) { return null; }
+}
+
+function parseRates(html) {
+  const result = { CUP: 1 };
+  const patterns = [
+    { key: 'USD', regex: /1\s*USD[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'EUR', regex: /1\s*EUR[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'MLC', regex: /1\s*MLC[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'CAD', regex: /1\s*CAD[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'MXN', regex: /1\s*MXN[^0-9]{0,20}?(\d{2,3}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'BRL', regex: /1\s*BRL[^0-9]{0,20}?(\d{2,3}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'CLA', regex: /1\s*CLA[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+  ];
+  for (const p of patterns) {
+    const m = html.match(p.regex);
+    if (m) result[p.key] = parseFloat(m[1].replace(',', '.'));
+  }
+  return Object.keys(result).length > 2 ? result : null;
+}
+
+function fallback() {
+  return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN:30.11, BRL:596.98, CLA:507.47 };
+}
+
+function buildSelects() {
+  const order = ['CUP','USD','EUR','MLC','CAD','MXN','BRL','CLA'];
+  const keys = order.filter(k => rates[k] !== undefined);
+  ['from-cur','to-cur'].forEach((id, i) => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    keys.forEach(c => {
+      const opt = new Option(`${FLAGS[c]||''} ${NAMES[c]||c}`, c);
+      if (i === 0 && c === 'CUP') opt.selected = true;
+      if (i === 1 && c === 'USD') opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function buildGrid() {
+  const grid = document.getElementById('rates-grid');
+  grid.innerHTML = '';
+  Object.entries(rates).filter(([k]) => k !== 'CUP').forEach(([code, rate]) => {
+    const div = document.createElement('div');
+    div.className = 'rate-item';
+    div.innerHTML = `<div class="flag">${FLAGS[code]||'💰'}</div><div class="name">${NAMES[code]||code}</div><div class="value">${rate.toLocaleString('es-CU',{maximumFractionDigits:2})}</div><div class="sub">CUP por ${code}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+function calculate() {
+  if (!rates || Object.keys(rates).length < 2) return;
+  const amount = parseFloat(document.getElementById('amount').value) || 0;
+  const from = document.getElementById('from-cur').value;
+  const to = document.getElementById('to-cur').value;
+  const cup = amount * (rates[from] || 1);
+  const result = cup / (rates[to] || 1);
+  const display = result >= 10000 ? result.toLocaleString('es-CU',{maximumFractionDigits:0}) : result.toLocaleString('es-CU',{maximumFractionDigits:2});
+  document.getElementById('result').textContent = display;
+  document.getElementById('result-cur').textContent = `${FLAGS[to]||''} ${to}`;
+  const r1 = (rates[from]||1) / (rates[to]||1);
+  document.getElementById('rate-info').textContent = `1 ${from} = ${r1 >= 100 ? r1.toLocaleString('es-CU',{maximumFractionDigits:0}) : r1.toFixed(2)} ${to}`;
+}
+
+function swapCurrencies() {
+  const f = document.getElementById('from-cur');
+  const t = document.getElementById('to-cur');
+  [f.value, t.value] = [t.value, f.value];
+  calculate();
+}
+
+async function init() {
+  const fetched = await fetchRates();
+  const now = new Date().toLocaleString('es-CU',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  if (fetched) {
+    rates = fetched;
+    document.getElementById('badge-text').textContent = 'Tiempo real · El Toque';
+    document.getElementById('update-time').textContent = `Actualizado: ${now} · elToque.com`;
+  } else {
+    rates = fallback();
+    document.getElementById('badge-text').textContent = 'Última actualización conocida';
+    document.getElementById('error-area').innerHTML = `<div class="error-msg">⚠️ No se pudo conectar a El Toque en tiempo real. Mostrando últimas tasas conocidas.</div>`;
+    document.getElementById('update-time').textContent = `Tasas: 20 marzo 2026 · elToque.com`;
+  }
+  buildSelects();
+  buildGrid();
+  calculate();
+}
+
+init();
+</script>
+</body>
 </html>
