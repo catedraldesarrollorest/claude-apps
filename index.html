@@ -3,29 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Calculadora CUP — Tasas El Toque</title>
+<meta name="theme-color" content="#1e3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cambio CUP">
+<meta name="description" content="Tasas del mercado informal cubano en tiempo real">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Calculadora de Cambio</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; padding: 20px; }
+
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; padding: 20px; padding-bottom: 40px; }
 .container { max-width: 480px; margin: 0 auto; }
+
 .header { text-align: center; padding: 28px 0 20px; }
 .header h1 { font-size: 22px; font-weight: 600; }
+
 .header p { font-size: 13px; color: #94a3b8; margin-top: 5px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; background: #1e3a5f; color: #60a5fa; font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-top: 8px; border: 1px solid #2563eb44; }
 .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
 .card { background: #1e293b; border-radius: 16px; padding: 22px; margin-bottom: 14px; border: 1px solid #334155; }
 .card-title { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+
 .field { margin-bottom: 12px; }
 .field label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
 .field input { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; font-size: 22px; font-weight: 700; color: #f1f5f9; outline: none; transition: border-color 0.2s; }
 .field input:focus { border-color: #3b82f6; }
 .field select { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; font-size: 15px; color: #f1f5f9; outline: none; cursor: pointer; appearance: none; }
+
 .result-box { background: #1e3a5f; border-radius: 14px; padding: 22px; margin-bottom: 14px; border: 1px solid #2563eb44; text-align: center; }
 .result-box .label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
 .result-box .amount { font-size: 40px; font-weight: 700; color: #60a5fa; }
 .result-box .currency { font-size: 14px; color: #94a3b8; margin-top: 4px; }
 .result-box .rate-info { font-size: 12px; color: #93c5fd; margin-top: 8px; }
+
 .rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .rate-item { background: #0f172a; border-radius: 10px; padding: 12px; border: 1px solid #334155; }
 .rate-item .flag { font-size: 18px; margin-bottom: 4px; }
@@ -33,9 +47,14 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9;
 .rate-item .value { font-size: 15px; font-weight: 600; color: #f1f5f9; }
 .rate-item .sub { font-size: 10px; color: #475569; margin-top: 2px; }
 .loading { text-align: center; padding: 20px; color: #64748b; font-size: 13px; grid-column: 1/-1; }
+
 .update-time { text-align: center; font-size: 11px; color: #475569; padding-bottom: 20px; }
 .swap-row { display: flex; justify-content: center; margin: -2px 0 8px; }
 .swap-btn { background: #1e3a5f; border: 1px solid #2563eb44; color: #60a5fa; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+
+.install-banner { background: #1e293b; border: 1px solid #2563eb44; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; display: none; align-items: center; justify-content: space-between; gap: 10px; }
+.install-banner p { font-size: 13px; color: #94a3b8; }
+.install-btn { background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -46,11 +65,16 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9;
     <span class="badge"><span class="dot"></span><span id="badge-text">Cargando tasas...</span></span>
   </div>
 
+  <div class="install-banner" id="install-banner">
+    <p>📲 Instala esta app en tu teléfono</p>
+    <button class="install-btn" id="install-btn">Instalar</button>
+  </div>
+
   <div class="card">
     <p class="card-title">Convertir</p>
     <div class="field">
       <label>Cantidad</label>
-      <input type="number" id="amount" value="1000" oninput="calculate()" />
+      <input type="number" id="amount" value="1000" oninput="calculate()" inputmode="decimal" />
     </div>
     <div class="field">
       <label>De</label>
@@ -83,9 +107,29 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9;
 </div>
 
 <script>
-const FLAGS = { USD:'🇺🇸', EUR:'🇪🇺', MLC:'💳', CAD:'🇨🇦', MXN:'🇲🇽', BRL:'🇧🇷', CLA:'⚡', CUP:'🇨🇺' };
+const FLAGS = { USD:'🇺🇸', EUR:'🇪🇺', MLC:'💳', CAD:'🇨🇦', MXN:'🇲𝇽', BRL:'🇧🇷', CLA:'⚡', CUP:'🇨🇺' };
 const NAMES = { USD:'Dólar USD', EUR:'Euro EUR', MLC:'MLC', CAD:'Dólar CAD', MXN:'Peso MXN', BRL:'Real BRL', CLA:'CLA / Zelle', CUP:'Peso CUP' };
 let rates = {};
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('install-banner').style.display = 'none';
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 
 async function fetchRates() {
   const proxies = [
@@ -98,7 +142,7 @@ async function fetchRates() {
       const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
       if (!res.ok) continue;
       let text = '';
-      try { const data = await res.json(); text = data.contents || data.body || JSON.stringify(data); }
+      try { const d = await res.json(); text = d.contents || d.body || JSON.stringify(d); }
       catch { text = await res.text(); }
       const parsed = parseRates(text);
       if (parsed && Object.keys(parsed).length > 3) return parsed;
@@ -136,7 +180,7 @@ function parseRates(html) {
   return Object.keys(result).length > 2 ? result : null;
 }
 
-function fallback() { return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN:30.11, BRL:596.98, CLA:507.47 }; }
+function fallback() { return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN30.11, BRL:596.98, CLA:507.47 }; }
 
 function buildSelects() {
   const order = ['CUP','USD','EUR','MLC','CAD','MXN','BRL','CLA'];
@@ -156,7 +200,7 @@ function buildGrid() {
   const grid = document.getElementById('rates-grid'); grid.innerHTML = '';
   Object.entries(rates).filter(([k]) => k !== 'CUP').forEach(([code, rate]) => {
     const div = document.createElement('div'); div.className = 'rate-item';
-    div.innerHTML = `<div class="flag">${FLAGS[code]||''}</div><div class="name">${NAMES[code]||code}</div><div class="value">${rate.toLocaleString('es-CU',{maximumFractionDigits:2})}</div><div class="sub">CUP por ${code}</div>`;
+    div.innerHTML = `<div class="flag">${FLAGS[code]||''}</div><div class="name">${NAMES[code]||code}</div><div class="value">${rate.toLocaleString('es-CU',{maximumFractionDigits:3})}</div><div class="sub">CUP por ${code}</div>`;
     grid.appendChild(div);
   });
 }
@@ -182,9 +226,9 @@ function swapCurrencies() {
   calculate();
 }
 
-async function init() {
+admin function init() {
   const fetched = await fetchRates();
-  const now = new Date().toLocaleString('es-CU',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const now = new Date().toLocaleString('es-CU'{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
   if (fetched) {
     rates = fetched;
     document.getElementById('badge-text').textContent = 'Tiempo real · El Toque';
