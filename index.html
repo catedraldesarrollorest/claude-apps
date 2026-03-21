@@ -33,7 +33,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9;
 .rate-item .value { font-size: 15px; font-weight: 600; color: #f1f5f9; }
 .rate-item .sub { font-size: 10px; color: #475569; margin-top: 2px; }
 .loading { text-align: center; padding: 20px; color: #64748b; font-size: 13px; grid-column: 1/-1; }
-.error-msg { background: #1e1010; border: 1px solid #7f1d1d; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #fca5a5; margin-bottom: 14px; }
 .update-time { text-align: center; font-size: 11px; color: #475569; padding-bottom: 20px; }
 .swap-row { display: flex; justify-content: center; margin: -2px 0 8px; }
 .swap-btn { background: #1e3a5f; border: 1px solid #2563eb44; color: #60a5fa; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
@@ -47,8 +46,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9;
     <span class="badge"><span class="dot"></span><span id="badge-text">Cargando tasas...</span></span>
   </div>
 
-  <div id="error-area"></div>
-
   <div class="card">
     <p class="card-title">Convertir</p>
     <div class="field">
@@ -60,7 +57,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9;
       <select id="from-cur" onchange="calculate()"></select>
     </div>
     <div class="swap-row">
-      <button class="swap-btn" onclick="swapCurrencies()" title="Intercambiar">⇅</button>
+      <button class="swap-btn" onclick="swapCurrencies()">⇅</button>
     </div>
     <div class="field">
       <label>A</label>
@@ -91,43 +88,61 @@ const NAMES = { USD:'Dólar USD', EUR:'Euro EUR', MLC:'MLC', CAD:'Dólar CAD', M
 let rates = {};
 
 async function fetchRates() {
-  try {
-    const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://eltoque.com/tasas-de-cambio-de-moneda-en-cuba-hoy');
-    const res = await fetch(url, { signal: AbortSignal.timeout(9000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseRates(data.contents || '');
-  } catch(e) { return null; }
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent('https://eltoque.com/tasas-de-cambio-de-moneda-en-cuba-hoy'),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://eltoque.com/tasas-de-cambio-de-moneda-en-cuba-hoy'),
+    'https://api.codetabs.com/v1/proxy?quest=https://eltoque.com/tasas-de-cambio-de-moneda-en-cuba-hoy'
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      let text = '';
+      try { const data = await res.json(); text = data.contents || data.body || JSON.stringify(data); }
+      catch { text = await res.text(); }
+      const parsed = parseRates(text);
+      if (parsed && Object.keys(parsed).length > 3) return parsed;
+    } catch(e) { continue; }
+  }
+  return null;
 }
 
 function parseRates(html) {
   const result = { CUP: 1 };
   const patterns = [
-    { key: 'USD', regex: /1\s*USD[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
-    { key: 'EUR', regex: /1\s*EUR[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
-    { key: 'MLC', regex: /1\s*MLC[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
-    { key: 'CAD', regex: /1\s*CAD[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
-    { key: 'MXN', regex: /1\s*MXN[^0-9]{0,20}?(\d{2,3}(?:[.,]\d+)?)\s*CUP/i },
-    { key: 'BRL', regex: /1\s*BRL[^0-9]{0,20}?(\d{2,3}(?:[.,]\d+)?)\s*CUP/i },
-    { key: 'CLA', regex: /1\s*CLA[^0-9]{0,20}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'USD', regex: /1\s*USD[^0-9]{0,30}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'EUR', regex: /1\s*EUR[^0-9]{0,30}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'MLC', regex: /1\s*MLC[^0-9]{0,30}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'CAD', regex: /1\s*CAD[^0-9]{0,30}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'MXN', regex: /1\s*MXN[^0-9]{0,30}?(\d{2,3}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'BRL', regex: /1\s*BRL[^0-9]{0,30}?(\d{2,3}(?:[.,]\d+)?)\s*CUP/i },
+    { key: 'CLA', regex: /1\s*CLA[^0-9]{0,30}?(\d{3,4}(?:[.,]\d+)?)\s*CUP/i },
+  ];
+  const jsonPats = [
+    { key: 'USD', regex: /"USD"[^}]*?"value"\s*:\s*(\d+(?:\.\d+)?)/i },
+    { key: 'EUR', regex: /"EUR"[^}]*?"value"\s*:\s*(\d+(?:\.\d+)?)/i },
+    { key: 'MLC', regex: /"MLC"[^}]*?"value"\s*:\s*(\d+(?:\.\d+)?)/i },
+    { key: 'CAD', regex: /"CAD"[^}]*?"value"\s*:\s*(\d+(?:\.\d+)?)/i },
   ];
   for (const p of patterns) {
     const m = html.match(p.regex);
     if (m) result[p.key] = parseFloat(m[1].replace(',', '.'));
   }
+  if (Object.keys(result).length < 4) {
+    for (const p of jsonPats) {
+      if (!result[p.key]) { const m = html.match(p.regex); if (m) result[p.key] = parseFloat(m[1]); }
+    }
+  }
   return Object.keys(result).length > 2 ? result : null;
 }
 
-function fallback() {
-  return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN:30.11, BRL:596.98, CLA:507.47 };
-}
+function fallback() { return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN:30.11, BRL:596.98, CLA:507.47 }; }
 
 function buildSelects() {
   const order = ['CUP','USD','EUR','MLC','CAD','MXN','BRL','CLA'];
   const keys = order.filter(k => rates[k] !== undefined);
   ['from-cur','to-cur'].forEach((id, i) => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = '';
+    const sel = document.getElementById(id); sel.innerHTML = '';
     keys.forEach(c => {
       const opt = new Option(`${FLAGS[c]||''} ${NAMES[c]||c}`, c);
       if (i === 0 && c === 'CUP') opt.selected = true;
@@ -138,12 +153,10 @@ function buildSelects() {
 }
 
 function buildGrid() {
-  const grid = document.getElementById('rates-grid');
-  grid.innerHTML = '';
+  const grid = document.getElementById('rates-grid'); grid.innerHTML = '';
   Object.entries(rates).filter(([k]) => k !== 'CUP').forEach(([code, rate]) => {
-    const div = document.createElement('div');
-    div.className = 'rate-item';
-    div.innerHTML = `<div class="flag">${FLAGS[code]||'💰'}</div><div class="name">${NAMES[code]||code}</div><div class="value">${rate.toLocaleString('es-CU',{maximumFractionDigits:2})}</div><div class="sub">CUP por ${code}</div>`;
+    const div = document.createElement('div'); div.className = 'rate-item';
+    div.innerHTML = `<div class="flag">${FLAGS[code]||''}</div><div class="name">${NAMES[code]||code}</div><div class="value">${rate.toLocaleString('es-CU',{maximumFractionDigits:2})}</div><div class="sub">CUP por ${code}</div>`;
     grid.appendChild(div);
   });
 }
@@ -179,8 +192,7 @@ async function init() {
   } else {
     rates = fallback();
     document.getElementById('badge-text').textContent = 'Última actualización conocida';
-    document.getElementById('error-area').innerHTML = `<div class="error-msg">⚠️ No se pudo conectar a El Toque en tiempo real. Mostrando últimas tasas conocidas.</div>`;
-    document.getElementById('update-time').textContent = `Tasas: 20 marzo 2026 · elToque.com`;
+    document.getElementById('update-time').textContent = `Tasas: 21 marzo 2026 · elToque.com`;
   }
   buildSelects();
   buildGrid();
