@@ -182,7 +182,7 @@ function parseRates(html) {
   return Object.keys(result).length > 2 ? result : null;
 }
 
-function fallback() { return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN30.11, BRL:596.98, CLA:507.47 }; }
+function fallback() { return { CUP:1, USD:515, EUR:580, MLC:420, CAD:340, MXN:30.11, BRL:596.98, CLA:507.47 }; }
 
 function buildSelects() {
   const order = ['CUP','USD','EUR','MLC','CAD','MXN','BRL','CLA'];
@@ -228,9 +228,9 @@ function swapCurrencies() {
   calculate();
 }
 
-admin function init() {
+async function init() {
   const fetched = await fetchRates();
-  const now = new Date().toLocaleString('es-CU'{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const now = new Date().toLocaleString('es-CU', {day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
   if (fetched) {
     rates = fetched;
     document.getElementById('badge-text').textContent = 'Tiempo real · El Toque';
